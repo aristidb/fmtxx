@@ -2,6 +2,7 @@
 #include <boost/optional.hpp>
 #include <boost/cstdint.hpp>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <ostream>
 
@@ -69,13 +70,31 @@ struct format_options {
   std::string other;
 };
 
-struct formattable {
-  virtual void append(std::string &str, format_options const &options) = 0;
-  virtual std::string as_parameter_string() = 0;
-  virtual ~formattable() = 0;
+struct formattable_interface {
+  virtual void append(std::ostream &stream, format_options const &options) = 0;
+  virtual void inner_append(std::ostream &stream) = 0;
+  virtual ~formattable_interface() = 0;
 };
 
-formattable::~formattable() {}
+formattable_interface::~formattable_interface() {}
+
+template<typename T, typename Cond = void>
+class formattable : formattable_interface {
+public:
+  formattable(T const &val) : val(val) {}
+
+  void append(std::ostream &stream, format_options const &options) {
+    // TODO: actually use format options
+    stream << val;
+  }
+
+  void inner_append(std::ostream &stream) {
+    stream << val;
+  }
+
+private:
+  T val;
+};
 
 int main() {
   std::cout << "Hello Formatting.\n";

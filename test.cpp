@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <fmtxx/named.hpp>
 #include <fmtxx/format_options.hpp>
 #include <boost/variant.hpp>
 #include <boost/optional.hpp>
@@ -78,23 +79,6 @@ public:
 private:
   T val;
 };
-
-template<typename T>
-struct named_type {
-  typedef T value_type;
-
-  std::string name;
-  value_type value;
-
-  named_type(std::string const &name, T const &value)
-    : name(name), value(value)
-    {}
-};
-
-template<typename T>
-named_type<T> named(std::string const &name, T const &value) {
-  return named_type<T>(name, value);
-}
 
 struct formattable_container {
   typedef boost::ptr_vector<formattable_interface> positional_container_type;

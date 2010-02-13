@@ -10,17 +10,14 @@
 #include <stdexcept>
 #include <string>
 #include <sstream>
+#include <memory>
 #include <iostream>
 #include <ostream>
-
-typedef boost::int_least32_t index_number_type;
-
-typedef boost::variant<std::string, index_number_type> index_type;
+#include <locale>
 
 struct format_options {
   format_options()
-    : subscript(boost::none),
-      fill(boost::none),
+    : fill(boost::none),
       alignment(NO_ALIGNMENT_SPECIFIED),
       sign(NO_SIGN_SPECIFIED),
       alternate_form(false),
@@ -30,9 +27,6 @@ struct format_options {
       radix(boost::none),
       other()
     {}
-
-  typedef index_type subscript_type;
-  boost::optional<index_type> subscript;
 
   typedef char fill_type;
   boost::optional<fill_type> fill;
@@ -95,6 +89,14 @@ struct formattable_interface {
       std::ostream &stream,
       format_options const &options = format_options()
   ) = 0;
+
+  virtual std::auto_ptr<formattable_interface>
+  subscript(std::string const &subscript) {
+    return std::auto_ptr<formattable_interface>(0);
+  }
+
+  virtual std::auto_ptr<formattable_interface> clone() const = 0;
+
   virtual ~formattable_interface() = 0;
 };
 
@@ -108,6 +110,10 @@ public:
   void append(std::ostream &stream, format_options const &options) {
     // TODO: actually use format options
     stream << val;
+  }
+
+  std::auto_ptr<formattable_interface> clone() const {
+    return std::auto_ptr<formattable_interface>(new formattable(val));
   }
 
 private:
@@ -170,6 +176,16 @@ struct format_parser {
 
   typedef std::string::const_iterator iterator;
 
+  bool isdig(char ch) {
+    switch (ch) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      return true;
+    default:
+      return false;
+    }
+  }
+
   void parse(std::string const &str) {
     std::string::const_iterator begin = str.begin(), end = str.end();
     parse(begin, end);
@@ -215,6 +231,19 @@ struct format_parser {
 
   void inner_format_element(iterator &begin, iterator end, std::string &composed) {
     //TODO
+  }
+
+  std::auto_ptr<formattable_interface> find_formattable(iterator &begin, iterator end) {
+    formattable_interface *p = 0;
+    if (isdig(*begin)) { // integer
+      boost::uint32_t position = 0;
+      boost::uint32_t mult = 1;
+      do {
+        position = position + (*begin - '0')  * mult;
+        mult *= 10;
+      } while (++begin != end && isdig(*begin));
+      
+    }
   }
 };
 

@@ -6,6 +6,7 @@
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/include/make_vector.hpp>
 #include <boost/ref.hpp>
+#include <stdexcept>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -143,6 +144,65 @@ struct formattable_container_add {
   template<typename T>
   void operator() (T const &x) const {
     cont.add(x);
+  }
+};
+
+struct format_error : std::runtime_error {
+  format_error(std::string const &w) : std::runtime_error(w) {}
+  ~format_error() throw() {}
+};
+
+struct format_parser {
+  formattable_container &cont;
+  std::ostream &stream;
+
+  typedef std::string::const_iterator iterator;
+
+  void parse(std::string const &str) {
+    std::string::const_iterator begin = str.begin(), end = str.end();
+    parse(begin, end);
+  }
+
+  void parse(iterator &begin, iterator end) {
+    while (begin != end)
+      element(begin, end);
+  }
+
+  void element(iterator &begin, iterator end) {
+    if (*begin == '{') {
+      iterator it = begin;
+      if (++it != end && *it == '{') {
+        stream << '{';
+        begin = ++it;
+      } else {
+        format_element(begin, end);
+      }
+    } else if (*begin == '}') {
+      if (++begin != end && *begin == '}') {
+        stream << '}';
+        ++begin;
+      } else {
+        throw format_error("Unbalanced } in format string");
+      }
+    } else {
+      stream << *begin;
+      ++begin;
+    }
+  }
+
+  void format_element(iterator &begin, iterator end) {
+    std::string composed;
+    composed.reserve(end - begin);
+    while (begin != end) {
+      if (*begin == '{')
+        inner_format_element(begin, end, composed);
+      else
+        composed += *begin;
+    }
+  }
+
+  void inner_format_element(iterator &begin, iterator end, std::string &composed) {
+    //TODO
   }
 };
 

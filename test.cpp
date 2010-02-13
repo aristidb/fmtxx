@@ -171,6 +171,10 @@ struct format_error : std::runtime_error {
 };
 
 struct format_parser {
+  format_parser(formattable_container &cont, std::ostream &stream)
+    : cont(cont), stream(stream)
+    {}
+
   formattable_container &cont;
   std::ostream &stream;
 
@@ -219,21 +223,30 @@ struct format_parser {
   }
 
   void format_element(iterator &begin, iterator end) {
-    std::string composed;
-    composed.reserve(end - begin);
+    ++begin;
+    std::ostringstream composed;
     while (begin != end) {
-      if (*begin == '{')
+      if (*begin == '{') {
         inner_format_element(begin, end, composed);
-      else
-        composed += *begin;
+      } else if (*begin == '}') {
+        ++begin;
+        break;
+      } else {
+        composed << *begin++;
+      }
     }
+    std::cout << "{<" << composed.str() << ">}";
   }
 
-  void inner_format_element(iterator &begin, iterator end, std::string &composed) {
-    //TODO
+  void inner_format_element(iterator &begin, iterator end, std::ostringstream &composed) {
+    ++begin; // skip {
+    std::auto_ptr<formattable_interface> p(find_formattable(begin, end));
+    p->append(composed);
   }
 
   std::auto_ptr<formattable_interface> find_formattable(iterator &begin, iterator end) {
+    if (begin == end)
+      throw format_error("Premature end of format element");
     formattable_interface *p = 0;
     if (isdig(*begin)) { // integer
       boost::uint32_t position = 0;
@@ -291,10 +304,12 @@ void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
     it->second->append(stream);
     stream << '\n';
   }
+  format_parser parser(cont, stream);
+  parser.parse(format);
 }
 
 int main() {
   std::cout << "Hello Formatting.\n";
   std::cout << "sizeof(format_options) = " << sizeof(format_options) << "\n";
-  vformat("{0} {x}", boost::fusion::make_vector(4, named("x", 5.0)), std::cout);
+  vformat("{0} {x}\n", boost::fusion::make_vector(4, named("x", 5.0)), std::cout);
 }

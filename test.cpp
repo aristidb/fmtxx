@@ -274,6 +274,7 @@ struct format_parser {
       throw format_error("Premature end of format element");
 
     if (*begin == '}' || *begin == ':') {
+      ++begin;
       return p->clone();
     } else if (*begin == '.') {
       iterator it = ++begin;
@@ -282,6 +283,7 @@ struct format_parser {
       if (begin == end)
         throw format_error("Premature end of format element");
       std::string subscript(it, begin);
+      ++begin;
       return p->subscript(subscript);
     } else {
       throw format_error("Invalid format element");
@@ -311,5 +313,5 @@ void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
 int main() {
   std::cout << "Hello Formatting.\n";
   std::cout << "sizeof(format_options) = " << sizeof(format_options) << "\n";
-  vformat("{0} {x}\n", boost::fusion::make_vector(4, named("x", 5.0)), std::cout);
+  vformat("{0{1}} {x}\n", boost::fusion::make_vector(4, 0, named("x", 5.0)), std::cout);
 }

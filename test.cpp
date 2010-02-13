@@ -1,6 +1,11 @@
 #include <boost/variant.hpp>
 #include <boost/optional.hpp>
 #include <boost/cstdint.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
+#include <boost/ptr_container/ptr_map.hpp>
+#include <boost/fusion/include/for_each.hpp>
+#include <boost/fusion/include/make_vector.hpp>
+#include <boost/ref.hpp>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -79,7 +84,7 @@ struct formattable_interface {
 formattable_interface::~formattable_interface() {}
 
 template<typename T, typename Cond = void>
-class formattable : formattable_interface {
+class formattable : public formattable_interface {
 public:
   formattable(T const &val) : val(val) {}
 
@@ -96,7 +101,70 @@ private:
   T val;
 };
 
+template<typename T>
+struct named_type {
+  typedef T value_type;
+
+  std::string name;
+  value_type value;
+
+  named_type(std::string const &name, T const &value)
+    : name(name), value(value)
+    {}
+};
+
+template<typename T>
+named_type<T> named(std::string const &name, T const &value) {
+  return named_type<T>(name, value);
+}
+
+struct formattable_container {
+  typedef boost::ptr_vector<formattable_interface> positional_container_type;
+  positional_container_type positional_container;
+  typedef boost::ptr_map<std::string, formattable_interface> named_container_type;
+  named_container_type named_container;
+
+  template<typename T>
+  void add(T const &val) {
+    this->positional_container.push_back(new formattable<T>(val));
+  }
+
+  template<typename T>
+  void add(named_type<T> const &named) {
+    std::string k = named.name;
+    formattable_interface *p = new formattable<T>(named.value);
+    this->named_container.insert(k, p);
+  };
+};
+
+struct formattable_container_add {
+  formattable_container &cont;
+
+  template<typename T>
+  void operator() (T const &x) const {
+    cont.add(x);
+  }
+};
+
+template<typename Seq>
+void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
+  formattable_container cont;
+  formattable_container_add add_cont = { cont };
+  boost::fusion::for_each(seq, add_cont);
+  for (std::size_t i = 0; i < cont.positional_container.size(); ++i) {
+    stream << i << ": ";
+    cont.positional_container[i].inner_append(stream);
+    stream << '\n';
+  }
+  for (formattable_container::named_container_type::iterator it = cont.named_container.begin(); it != cont.named_container.end(); ++it) {
+    stream << it->first << ": ";
+    it->second->inner_append(stream);
+    stream << '\n';
+  }
+}
+
 int main() {
   std::cout << "Hello Formatting.\n";
   std::cout << "sizeof(format_options) = " << sizeof(format_options) << "\n";
+  vformat("{0} {x}", boost::fusion::make_vector(4, named("x", 5.0)), std::cout);
 }

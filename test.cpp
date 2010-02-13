@@ -1,5 +1,6 @@
 #include <boost/variant.hpp>
 #include <boost/optional.hpp>
+#include <boost/none.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
@@ -17,8 +18,21 @@ typedef boost::int_least32_t index_number_type;
 typedef boost::variant<std::string, index_number_type> index_type;
 
 struct format_options {
+  format_options()
+    : subscript(boost::none),
+      fill(boost::none),
+      alignment(NO_ALIGNMENT_SPECIFIED),
+      sign(NO_SIGN_SPECIFIED),
+      alternate_form(false),
+      width(boost::none),
+      precision(boost::none),
+      format(NO_FORMAT_SPECIFIED),
+      radix(boost::none),
+      other()
+    {}
+
   typedef index_type subscript_type;
-  index_type subscript;
+  boost::optional<index_type> subscript;
 
   typedef char fill_type;
   boost::optional<fill_type> fill;
@@ -71,14 +85,16 @@ struct format_options {
   format_type format;
 
   typedef boost::uint32_t radix_type;
-  radix_type radix;
+  boost::optional<radix_type> radix;
 
   std::string other;
 };
 
 struct formattable_interface {
-  virtual void append(std::ostream &stream, format_options const &options) = 0;
-  virtual void inner_append(std::ostream &stream) = 0;
+  virtual void append(
+      std::ostream &stream,
+      format_options const &options = format_options()
+  ) = 0;
   virtual ~formattable_interface() = 0;
 };
 
@@ -91,10 +107,6 @@ public:
 
   void append(std::ostream &stream, format_options const &options) {
     // TODO: actually use format options
-    stream << val;
-  }
-
-  void inner_append(std::ostream &stream) {
     stream << val;
   }
 
@@ -213,12 +225,12 @@ void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
   boost::fusion::for_each(seq, add_cont);
   for (std::size_t i = 0; i < cont.positional_container.size(); ++i) {
     stream << i << ": ";
-    cont.positional_container[i].inner_append(stream);
+    cont.positional_container[i].append(stream);
     stream << '\n';
   }
   for (formattable_container::named_container_type::iterator it = cont.named_container.begin(); it != cont.named_container.end(); ++it) {
     stream << it->first << ": ";
-    it->second->inner_append(stream);
+    it->second->append(stream);
     stream << '\n';
   }
 }

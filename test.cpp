@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 #include <memory>
+#include <algorithm>
 #include <iostream>
 #include <ostream>
 #include <locale>
@@ -235,7 +236,19 @@ struct format_parser {
         composed << *begin++;
       }
     }
-    std::cout << "{<" << composed.str() << ">}";
+    if (begin == end)
+      throw format_error("Premature end of format element");
+    std::string const &definition = composed.str();
+    iterator dbegin = definition.begin(), dend = definition.end();
+    std::auto_ptr<formattable_interface> pformattable(find_formattable(dbegin, dend));
+    format_options opt;
+    if (dbegin != dend)
+      format_specifier(dbegin, dend, opt);
+    pformattable->append(stream, opt);
+  }
+
+  void format_specifier(iterator &begin, iterator end, format_options &opt) {
+    //TODO
   }
 
   void inner_format_element(iterator &begin, iterator end, std::ostringstream &composed) {
@@ -271,7 +284,7 @@ struct format_parser {
     }
 
     if (begin == end)
-      throw format_error("Premature end of format element");
+      return p->clone();
 
     if (*begin == '}' || *begin == ':') {
       ++begin;
@@ -296,16 +309,6 @@ void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
   formattable_container cont;
   formattable_container_add add_cont = { cont };
   boost::fusion::for_each(seq, add_cont);
-  for (std::size_t i = 0; i < cont.positional_container.size(); ++i) {
-    stream << i << ": ";
-    cont.positional_container[i].append(stream);
-    stream << '\n';
-  }
-  for (formattable_container::named_container_type::iterator it = cont.named_container.begin(); it != cont.named_container.end(); ++it) {
-    stream << it->first << ": ";
-    it->second->append(stream);
-    stream << '\n';
-  }
   format_parser parser(cont, stream);
   parser.parse(format);
 }
@@ -313,5 +316,5 @@ void vformat(std::string const &format, Seq const &seq, std::ostream &stream) {
 int main() {
   std::cout << "Hello Formatting.\n";
   std::cout << "sizeof(format_options) = " << sizeof(format_options) << "\n";
-  vformat("{0{1}} {x}\n", boost::fusion::make_vector(4, 0, named("x", 5.0)), std::cout);
+  vformat("{0{1}} {x}\n", boost::fusion::make_vector(4, 0, named("x", 5.2)), std::cout);
 }

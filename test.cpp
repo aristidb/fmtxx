@@ -242,7 +242,36 @@ struct format_parser {
         position = position + (*begin - '0')  * mult;
         mult *= 10;
       } while (++begin != end && isdig(*begin));
-      
+      if (position > cont.positional_container.size())
+        throw format_error("Invalid format element position");
+      p = &cont.positional_container[position];
+    } else {
+      iterator it = begin;
+      while (begin != end && *begin != '}' && *begin != ':' && *begin != '.')
+        ++begin;
+      std::string name(it, begin);
+      formattable_container::named_container_type::iterator found =
+        cont.named_container.find(name);
+      if (found == cont.named_container.end())
+        throw format_error("Invalid format element name");
+      p = found->second;
+    }
+
+    if (begin == end)
+      throw format_error("Premature end of format element");
+
+    if (*begin == '}' || *begin == ':') {
+      return p->clone();
+    } else if (*begin == '.') {
+      iterator it = ++begin;
+      while (begin != end && *begin != '}')
+        ++begin;
+      if (begin == end)
+        throw format_error("Premature end of format element");
+      std::string subscript(it, begin);
+      return p->subscript(subscript);
+    } else {
+      throw format_error("Invalid format element");
     }
   }
 };

@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#include <fmtxx/formattable_interface.hpp>
 #include <fmtxx/named.hpp>
 #include <fmtxx/format_options.hpp>
 #include <boost/variant.hpp>
@@ -43,24 +44,6 @@ THE SOFTWARE.
 #include <locale>
 
 using namespace fmtxx;
-
-struct formattable_interface {
-  virtual void append(
-      std::ostream &stream,
-      format_options const &options = format_options()
-  ) = 0;
-
-  virtual std::auto_ptr<formattable_interface>
-  subscript(std::string const &subscript) {
-    return std::auto_ptr<formattable_interface>(0);
-  }
-
-  virtual std::auto_ptr<formattable_interface> clone() const = 0;
-
-  virtual ~formattable_interface() = 0;
-};
-
-formattable_interface::~formattable_interface() {}
 
 template<typename T, typename Cond = void>
 class formattable : public formattable_interface {
